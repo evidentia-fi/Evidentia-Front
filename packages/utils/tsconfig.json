@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "composite": true,
+    "incremental": true,
+    "outDir": "dist",
+    "preserveWatchOutput": true,
+    "rootDir": "src",
+    "target": "ESNext",
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "extends": "@workspace/typescript-config/react-library.json",
+  "include": ["src"]
+}

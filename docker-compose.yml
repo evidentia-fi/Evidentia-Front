@@ -1,0 +1,76 @@
+version: '3'
+
+services:
+  #  landing
+  evidentia:
+    container_name: evidentia
+    image: registry.int.zpoken.io/evidentia/front:dev
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    restart: always
+    ports:
+      - 4000:3000
+
+  #  app
+  app-evidentia:
+    container_name: app-evidentia
+    image: registry.int.zpoken.io/evidentia/front:app-prod
+    build:
+      context: .
+      dockerfile: ./apps/app/Dockerfile
+      args:
+        NODE: production
+    restart: always
+    ports:
+      - 4001:3000
+
+  app-evidentia-mint:
+    container_name: app-evidentia-mint
+    image: registry.int.zpoken.io/evidentia/front:mint-prod
+    build:
+      context: .
+      dockerfile: ./apps/mint/Dockerfile
+      args:
+        NODE: production
+    restart: always
+    ports:
+      - 4004:3000
+
+  app-evidentia-mint-dev:
+    container_name: app-evidentia-mint-dev
+    image: registry.int.zpoken.io/evidentia/front:mint-dev
+    build:
+      context: .
+      dockerfile: ./apps/mint/Dockerfile
+      args:
+        NODE: development
+    restart: always
+    ports:
+      - 4005:3000
+
+  app-evidentia-dev:
+    container_name: app-evidentia-dev
+    image: registry.int.zpoken.io/evidentia/front:app-dev
+    build:
+      context: .
+      dockerfile: ./apps/app/Dockerfile
+      args:
+        NODE: development
+    restart: always
+    ports:
+      - 4002:3000
+
+  app-sol-evidentia-dev:
+    container_name: app-sol-evidentia-dev
+    image: registry.int.zpoken.io/evidentia/front:app-sol-dev
+    build:
+      context: .
+      dockerfile: ./apps/app-sol/Dockerfile
+      args:
+        NODE: development
+    restart: always
+    ports:
+      - 4003:3000
+
+
