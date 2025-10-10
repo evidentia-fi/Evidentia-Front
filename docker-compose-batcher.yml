@@ -1,0 +1,146 @@
+version: "3.9"
+
+services:
+  # ---------- BATCHER SERVICE ----------
+  op-batcher:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:latest
+    container_name: sensei-op-batcher
+    environment:
+      # L1 Configuration
+      OP_BATCHER_L1_ETH_RPC: ${L1_RPC_URL}
+      OP_BATCHER_L2_ETH_RPC: ${L2_RPC_URL}
+      OP_BATCHER_ROLLUP_RPC: ${ROLLUP_RPC_URL}
+      
+      # Wallet Configuration
+      OP_BATCHER_PRIVATE_KEY: ${SENSEI_BATCHER_KEY}
+      
+      # Metrics Configuration
+      OP_BATCHER_METRICS_ADDR: 0.0.0.0
+      OP_BATCHER_METRICS_PORT: 7301
+      
+      # Batch Configuration
+      OP_BATCHER_TARGET_NUM_SEQUENCER_DRIFT_BLOCKS: "20"
+      OP_BATCHER_TARGET_L1_TX_SIZE_BYTES: "100000"
+      OP_BATCHER_TARGET_L1_TX_SIZE_BYTES_PER_BLOCK: "100000"
+      OP_BATCHER_MAX_L1_TX_SIZE_BYTES: "150000"
+      OP_BATCHER_MAX_L1_TX_SIZE_BYTES_PER_BLOCK: "150000"
+      OP_BATCHER_MIN_L1_TX_SIZE_BYTES: "1000"
+      OP_BATCHER_MIN_L1_TX_SIZE_BYTES_PER_BLOCK: "1000"
+      
+      # Gas Configuration
+      OP_BATCHER_MAX_CHANNEL_DURATION: "1h"
+      OP_BATCHER_MAX_CHANNEL_SIZE: "10000000"
+      OP_BATCHER_SUB_SAFETY_MARGIN: "4"
+      OP_BATCHER_MAX_PENDING_CHANNELS: "10"
+      
+      # Logging
+      OP_BATCHER_LOG_LEVEL: "info"
+      OP_BATCHER_LOG_FORMAT: "json"
+      
+      # Polling Configuration
+      OP_BATCHER_POLL_INTERVAL: "6s"
+      OP_BATCHER_NUM_CONFIRMATIONS: "10"
+      
+      # Fee Configuration
+      OP_BATCHER_MAX_FEE_PER_GAS: "20000000000"  # 20 gwei
+      OP_BATCHER_MAX_PRIORITY_FEE_PER_GAS: "2000000000"  # 2 gwei
+      OP_BATCHER_FEE_BUMP_PERCENT: "10"
+      OP_BATCHER_FEE_BUMP_INTERVAL: "1m"
+      OP_BATCHER_FEE_BUMP_THRESHOLD: "5"
+      
+      # Health Check
+      OP_BATCHER_HEALTH_CHECK_PORT: "7301"
+      OP_BATCHER_HEALTH_CHECK_INTERVAL: "30s"
+      
+    networks: 
+      - sensei_private
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7301/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - prometheus
+
+  # ---------- MONITORING ----------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sensei-prometheus-batcher
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sensei-grafana-batcher
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ---------- LOG AGGREGATION ----------
+  loki:
+    image: grafana/loki:latest
+    container_name: sensei-loki-batcher
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sensei-promtail-batcher
+    volumes:
+      - ./logs:/var/log/sensei:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+networks:
+  sensei_private:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:

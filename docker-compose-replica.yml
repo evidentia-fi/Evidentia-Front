@@ -1,0 +1,206 @@
+version: "3.9"
+
+services:
+  # ---------- L2 REPLICA STACK (PUBLIC RPC) ----------
+  op-geth-replica:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:latest
+    container_name: sensei-op-geth-replica
+    command: >
+      --datadir=/data
+      --http 
+      --http.addr=0.0.0.0 
+      --http.port=8545 
+      --http.api=engine,eth,net,web3,debug,txpool
+      --http.corsdomain=*
+      --http.vhosts=*
+      --ws 
+      --ws.addr=0.0.0.0 
+      --ws.port=8546
+      --ws.api=engine,eth,net,web3,debug,txpool
+      --ws.origins=*
+      --authrpc.addr=0.0.0.0 
+      --authrpc.port=8551
+      --authrpc.jwtsecret=/jwt/l2.jwt
+      --authrpc.vhosts=*
+      --gcmode=full
+      --syncmode=full
+      --metrics 
+      --metrics.addr=0.0.0.0 
+      --metrics.port=6060
+      --verbosity=3
+      --log.json
+    volumes:
+      - ./data/geth-replica:/data
+      - ./jwt:/jwt:ro
+      - ./configs/genesis.json:/genesis.json:ro
+      - ./logs:/logs
+    networks: 
+      - sensei_private
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  op-node-replica:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:latest
+    container_name: sensei-op-node-replica
+    command: >
+      op-node
+      --l1=${L1_RPC_URL}
+      --l2=http://op-geth-replica:8551
+      --l2.jwt-secret=/jwt/l2.jwt
+      --rollup.config=/configs/rollup.json
+      --rpc.addr=0.0.0.0 
+      --rpc.port=9545
+      --p2p.disable-discovery=false
+      --p2p.listen.ip=0.0.0.0
+      --p2p.listen.tcp=9222
+      --p2p.priv.path=/p2p/priv.key
+      --p2p.static=${SEQUENCER_PEER_ADDR}
+      --sequencer.enabled=false
+      --verifier.l1-confs=3
+      --metrics.enabled=true 
+      --metrics.addr=0.0.0.0 
+      --metrics.port=7300
+      --log.level=info
+      --log.format=json
+    depends_on:
+      op-geth-replica:
+        condition: service_healthy
+    volumes:
+      - ./jwt:/jwt:ro
+      - ./configs:/configs:ro
+      - ./p2p:/p2p
+      - ./logs:/logs
+    networks: 
+      - sensei_private
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7300/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---------- NGINX REVERSE PROXY ----------
+  nginx:
+    image: nginx:alpine
+    container_name: sensei-nginx-replica
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    depends_on:
+      - op-geth-replica
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------- RATE LIMITING ----------
+  redis:
+    image: redis:alpine
+    container_name: sensei-redis-replica
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - sensei_private
+    restart: unless-stopped
+
+  # ---------- MONITORING ----------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sensei-prometheus-replica
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sensei-grafana-replica
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ---------- LOG AGGREGATION ----------
+  loki:
+    image: grafana/loki:latest
+    container_name: sensei-loki-replica
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sensei-promtail-replica
+    volumes:
+      - ./logs:/var/log/sensei:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+networks:
+  sensei_private:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  redis_data:

@@ -1,0 +1,171 @@
+version: "3.9"
+
+services:
+  # ---------- DATABASE ----------
+  postgres:
+    image: postgres:15-alpine
+    container_name: sensei-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sensei}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sensei_explorer}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sensei}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:alpine
+    container_name: sensei-redis-explorer
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - sensei_private
+    restart: unless-stopped
+
+  # ---------- BLOCKSCOUT ----------
+  blockscout:
+    image: blockscout/blockscout:latest
+    container_name: sensei-blockscout
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sensei}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sensei_explorer}
+      REDIS_URL: redis://redis:6379
+      
+      # Chain Configuration
+      ETHEREUM_JSONRPC_HTTP_URL: ${L2_RPC_URL}
+      ETHEREUM_JSONRPC_WS_URL: ${L2_WS_URL}
+      ETHEREUM_JSONRPC_VARIANT: geth
+      CHAIN_ID: ${L2_CHAIN_ID:-22222}
+      COIN: SEN
+      COIN_NAME: Sensei
+      NETWORK: Sensei
+      SUBNETWORK: Sensei L2
+      
+      # L1 Configuration
+      ETHEREUM_JSONRPC_TRACE_URL: ${L1_RPC_URL}
+      L1_RPC_URL: ${L1_RPC_URL}
+      L1_CONSENSUS_RPC_URL: ${L1_RPC_URL}
+      
+      # OP Stack Configuration
+      DISABLE_INDEXER: "false"
+      INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER: "false"
+      INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: "false"
+      INDEXER_DISABLE_BLOCK_REWARD_FETCHER: "false"
+      INDEXER_DISABLE_EMPTY_BLOCK_SANITIZER: "false"
+      
+      # API Configuration
+      DISABLE_WEBAPP: "false"
+      API_V1_ENABLED: "true"
+      API_V2_ENABLED: "true"
+      GRAPHQL_ENABLED: "true"
+      
+      # Security
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SAME_SITE: "Lax"
+      
+      # Performance
+      POOL_SIZE: 50
+      ECTO_USE_SSL: "false"
+      HEART_COMMAND: "sleep infinity"
+      
+      # Logging
+      LOG_LEVEL: "info"
+      LOG_FORMAT: "json"
+      
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ---------- NGINX REVERSE PROXY ----------
+  nginx:
+    image: nginx:alpine
+    container_name: sensei-nginx-explorer
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/explorer-nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    depends_on:
+      - blockscout
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------- MONITORING ----------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sensei-prometheus-explorer
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sensei-grafana-explorer
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+networks:
+  sensei_private:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

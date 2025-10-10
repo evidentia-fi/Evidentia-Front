@@ -1,0 +1,141 @@
+version: "3.9"
+
+services:
+  # ---------- PROPOSER SERVICE ----------
+  op-proposer:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:latest
+    container_name: sensei-op-proposer
+    environment:
+      # L1 Configuration
+      OP_PROPOSER_L1_ETH_RPC: ${L1_RPC_URL}
+      OP_PROPOSER_L2_ETH_RPC: ${L2_RPC_URL}
+      OP_PROPOSER_ROLLUP_RPC: ${ROLLUP_RPC_URL}
+      
+      # Wallet Configuration
+      OP_PROPOSER_PRIVATE_KEY: ${SENSEI_PROPOSER_KEY}
+      
+      # Metrics Configuration
+      OP_PROPOSER_METRICS_ADDR: 0.0.0.0
+      OP_PROPOSER_METRICS_PORT: 7302
+      
+      # Proposal Configuration
+      OP_PROPOSER_ALLOW_NON_FINALIZED: "false"
+      OP_PROPOSER_DISABLE_TX_BATCHES: "false"
+      OP_PROPOSER_DISABLE_OUTPUT_BATCHES: "false"
+      OP_PROPOSER_DISABLE_STATE_BATCHES: "false"
+      
+      # Polling Configuration
+      OP_PROPOSER_POLL_INTERVAL: "12s"
+      OP_PROPOSER_NUM_CONFIRMATIONS: "10"
+      
+      # Fee Configuration
+      OP_PROPOSER_MAX_FEE_PER_GAS: "20000000000"  # 20 gwei
+      OP_PROPOSER_MAX_PRIORITY_FEE_PER_GAS: "2000000000"  # 2 gwei
+      OP_PROPOSER_FEE_BUMP_PERCENT: "10"
+      OP_PROPOSER_FEE_BUMP_INTERVAL: "1m"
+      OP_PROPOSER_FEE_BUMP_THRESHOLD: "5"
+      
+      # Logging
+      OP_PROPOSER_LOG_LEVEL: "info"
+      OP_PROPOSER_LOG_FORMAT: "json"
+      
+      # Health Check
+      OP_PROPOSER_HEALTH_CHECK_PORT: "7302"
+      OP_PROPOSER_HEALTH_CHECK_INTERVAL: "30s"
+      
+      # Output Configuration
+      OP_PROPOSER_OUTPUT_SUBMISSION_INTERVAL: "2m"
+      OP_PROPOSER_OUTPUT_SUBMISSION_TIMEOUT: "10m"
+      
+    networks: 
+      - sensei_private
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7302/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - prometheus
+
+  # ---------- MONITORING ----------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sensei-prometheus-proposer
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sensei-grafana-proposer
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ---------- LOG AGGREGATION ----------
+  loki:
+    image: grafana/loki:latest
+    container_name: sensei-loki-proposer
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sensei-promtail-proposer
+    volumes:
+      - ./logs:/var/log/sensei:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+    networks:
+      - sensei_private
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+networks:
+  sensei_private:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
