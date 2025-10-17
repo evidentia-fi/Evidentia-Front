@@ -1,0 +1,42 @@
+{
+  "name": "mint",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --port 3004",
+    "dev:prod": "dotenv -e .env.production.local -- next dev --turbopack --port 3010",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.74.4",
+    "@wagmi/core": "overrides",
+    "@web3icons/react": "^4.0.13",
+    "@workspace/types": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "@workspace/utils": "workspace:*",
+    "install": "^0.13.0",
+    "lucide-react": "^0.475.0",
+    "next": "^15.2.4",
+    "pnpm": "^10.12.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.4.1",
+    "viem": "overrides",
+    "wagmi": "overrides"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@workspace/eslint-config": "workspace:^",
+    "@workspace/i18n": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "dotenv": "^16.5.0",
+    "typescript": "^5.7.3"
+  }
+}

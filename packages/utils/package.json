@@ -1,0 +1,48 @@
+{
+  "name": "@workspace/utils",
+  "version": "0.0.0",
+  "license": "MIT",
+  "exports": {
+    "./constants": "./src/constants/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./config": "./src/config/index.ts",
+    "./abis": "./src/abis/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./services": "./src/services/index.ts",
+    "./graphql": "./src/graphql/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint *.ts*"
+  },
+  "peerDependencies": {
+    "next": "^15.2.4",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18.2.48",
+    "@workspace/eslint-config": "workspace:^",
+    "@workspace/i18n": "workspace:*",
+    "@workspace/types": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.74.4",
+    "@tronweb3/tronwallet-adapters": "^1.2.9",
+    "@uniswap/sdk-core": "^7.7.2",
+    "@urql/core": "^5.2.0",
+    "@wagmi/connectors": "^5.8.3",
+    "@wagmi/core": "overrides",
+    "axios": "^1.8.4",
+    "bignumber.js": "^9.3.0",
+    "date-fns": "^4.1.0",
+    "i18next": "^25.0.0",
+    "react-i18next": "^15.4.1",
+    "react-number-format": "^5.4.4",
+    "urql": "^4.2.2",
+    "viem": "overrides",
+    "wagmi": "overrides",
+    "zod": "^3.24.2"
+  }
+}
