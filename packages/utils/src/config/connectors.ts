@@ -41,8 +41,8 @@ const config = createConfig({
   }),
   transports: {
     // [mainnet.id]: http('https://rpc.ethereum.zpoken.dev'),
-    [mainnet.id]: http('https://eth-mainnet.g.alchemy.com/v2/8pBW1FZAVigTRKMagtfz0'),
-    [base.id]: http('https://base-mainnet.g.alchemy.com/v2/8pBW1FZAVigTRKMagtfz0'),
+    [mainnet.id]: http('https://eth-mainnet.g.alchemy.com/v2/s7CeyKmVLqakDSUUQh0Bl'),
+    [base.id]: http('https://base-mainnet.g.alchemy.com/v2/s7CeyKmVLqakDSUUQh0Bl'),
   },
   multiInjectedProviderDiscovery: false,
   ssr: true,
