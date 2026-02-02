@@ -97,10 +97,8 @@ export const StakeProvider = ({ children }: PropsWithChildren) => {
   const pendingRewards = getResultReadContracts(data?.[2]) ?? 0n;
 
   const stakedAmount = userData?.stakedAmount ? formatUnits(userData?.stakedAmount, decimals) : '0';
-  const rewardsEarned = userData?.rewardsEarned ?? 0n;
 
-  const rewardRaw = rewardsEarned + pendingRewards;
-  const reward = rewardRaw ? formatUnits(rewardRaw, decimals) : '0';
+  const reward = pendingRewards ? formatUnits(pendingRewards, decimals) : '0';
   const totalStaked = formatUnits(totalStakedRaw, decimals);
   const allowance = formatUnits(allowanceRaw, decimals);
 
