@@ -39,6 +39,15 @@ export const LiquidityProvider = ({ children }: PropsWithChildren) => {
   );
   const totalApr = poolApr.toFixed(2);
 
+  const exchanges = [
+    {
+      exchange: 'Whitebit',
+      type: 'Spot',
+      pairs: 'USDT/UAHE',
+      link: 'https://whitebit.com/trade/USDT-UAHE?type=spot',
+    },
+  ];
+
   const pool = useMemo<IPool>(
     () => ({
       pool: `${token0?.symbol ?? ''}/${token1?.symbol ?? ''}`.replace('eUAH', 'UAHe'),
@@ -60,7 +69,7 @@ export const LiquidityProvider = ({ children }: PropsWithChildren) => {
       protocols: [],
       pools: [pool],
       markets: [],
-      exchanges: [],
+      exchanges,
     }),
     [pool],
   );

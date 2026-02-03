@@ -51,9 +51,13 @@ const CentralisedExchangesTable = () => {
             <TableCell>{exchange.type}</TableCell>
             <TableCell>{exchange.pairs}</TableCell>
             <TableCell>
-              <Link href={''} className={cn(badgeVariants())}>
+              {exchange.link ? (
+                <Link href={exchange.link} className={cn(badgeVariants())}>
+                  <LinkIcon size={12} />
+                </Link>
+              ) : (
                 <LinkIcon size={12} />
-              </Link>
+              )}
             </TableCell>
           </TableRow>
         ))}

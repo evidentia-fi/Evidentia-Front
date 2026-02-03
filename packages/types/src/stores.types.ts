@@ -91,6 +91,7 @@ export interface ILiquidityContext {
     exchange: string;
     type: string;
     pairs: string;
+    link?: string;
   }[];
 }
 
