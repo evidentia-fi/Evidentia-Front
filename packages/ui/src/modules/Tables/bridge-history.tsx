@@ -5,7 +5,7 @@ import React from 'react';
 import { EOftStatus, IContractEvent } from '@workspace/types';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
-
+import { fromZonedTime } from 'date-fns-tz';
 import { Badge } from '@workspace/ui/components/badge';
 import { buttonVariants } from '@workspace/ui/components/button';
 import {
@@ -37,6 +37,12 @@ const BridgeHistoryTable = ({
   const { t } = useTranslation();
   const { symbol } = useStable();
   const { explorerUrl } = useAccount();
+
+  const KYIV_TZ = 'Europe/Kyiv';
+
+  const parseKyivDate = (dateStr: string) => {
+    return fromZonedTime(dateStr, KYIV_TZ);
+  };
 
   return (
     <Table withPagination page={page} totalPages={totalPages} handlePage={handlePage}>
@@ -70,7 +76,11 @@ const BridgeHistoryTable = ({
                   {shortTxHash}
                 </a>
               </TableCell>
-              <TableCell>{format(item.created_at, formatDateWithTimeStr)}</TableCell>
+              <TableCell>
+                  {item.created_at
+                  ? format(parseKyivDate(item.created_at), formatDateWithTimeStr)
+                  : '-'}
+              </TableCell>
               <TableCell>
                 {destinationNetwork ? destinationNetworkName[destinationNetwork] : '-'}
               </TableCell>

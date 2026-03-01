@@ -34,7 +34,7 @@ const stable: Record<string, { decimals: number; address: Address; spender: Addr
     spender: env.OFT_ADAPTER,
   },
   Base: {
-    decimals: 6,
+    decimals: 6,  
     address: env.BASE_ADDRESS,
     spender: env.BASE_ADDRESS,
   },
@@ -58,13 +58,23 @@ export const BridgeProvider = ({ children }: PropsWithChildren) => {
   const approve = async ({ amount, chain }: { amount: bigint; chain: string }) => {
     const uah = stable[chain];
     if (!uah) return;
-    const res = await writeContract({
-      abi: abi.stableAddressAbi,
+    const commonParams = {
       functionName: 'approve',
-      args: [uah.spender, amount],
+      args: [uah.spender, amount] as const,
       address: uah.address,
       chainId: chains[chain]?.id,
-    });
+    };
+
+    const res =
+      chain === 'Base'
+        ? await writeContract({
+            ...commonParams,
+            abi: abi.stableBondCoinsOftAbi,
+          })
+        : await writeContract({
+            ...commonParams,
+            abi: abi.stableAddressAbi,
+          });
 
     await waitForTransactionReceipt(wagmiConfig, {
       hash: res,
@@ -187,13 +197,22 @@ export const BridgeProvider = ({ children }: PropsWithChildren) => {
 
     switchChain({ chainId: Number(chains[fromChain]?.id) });
 
-    const allowanceRaw = await readContract(wagmiConfig, {
-      address: uah.address,
-      abi: abi.stableAddressAbi,
-      functionName: 'allowance',
-      args: [address as Address, uah.spender],
-      chainId: chains[fromChain]?.id,
-    });
+    const allowanceRaw =
+      fromChain === 'Base'
+        ? await readContract(wagmiConfig, {
+            address: uah.address,
+            abi: abi.stableBondCoinsOftAbi,
+            functionName: 'allowance',
+            args: [address as Address, uah.spender],
+            chainId: chains[fromChain]?.id,
+          })
+        : await readContract(wagmiConfig, {
+            address: uah.address,
+            abi: abi.stableAddressAbi,
+            functionName: 'allowance',
+            args: [address as Address, uah.spender],
+            chainId: chains[fromChain]?.id,
+          });
 
     if (allowanceRaw < amountRaw) {
       await approve({ amount: amountRaw, chain: fromChain });

@@ -64,14 +64,14 @@ export const LiquidityProvider = ({ children }: PropsWithChildren) => {
 
   const values: ILiquidityContext = useMemo(
     () => ({
-      totalLiquidity: '-',
-      apy: '-',
-      protocols: [],
+      totalLiquidity: `$${numberFormat(tvl)}`,
+      apy: `${totalApr}%`,
+      protocols: [{ name: 'Uniswap V4', image: '/icons/uni.svg' }],
       pools: [pool],
       markets: [],
       exchanges,
     }),
-    [pool],
+    [pool, tvl, totalApr],
   );
 
   return <LiquidityContext.Provider value={values}>{children}</LiquidityContext.Provider>;

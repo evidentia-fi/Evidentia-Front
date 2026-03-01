@@ -21,8 +21,8 @@ const StakingHistory = () => {
     types: [
       EContractEventType.STABLE_STAKE,
       EContractEventType.REWARD_CLAIM,
-      // EContractEventType.STABLE_WITHDRAW,
-      // EContractEventType.STABLE_TRANSFER,
+      EContractEventType.STABLE_WITHDRAW,
+      EContractEventType.STABLE_TRANSFER,
     ],
     wallet: address,
   });

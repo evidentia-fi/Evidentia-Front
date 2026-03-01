@@ -86,4 +86,5 @@ export const destinationNetworkName = {
   40420: 'Tron',
   40161: 'Sepolia',
   30101: 'Ethereum',
+  30184: 'Base',
 };

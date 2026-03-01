@@ -17,7 +17,11 @@ const DashboardLiquidityCards = () => {
     { title: t('DASHBOARD.CARDS.AVERAGE_APY'), value: apy, id: 2 },
     {
       title: t('DASHBOARD.CARDS.PROTOCOLS'),
-      value: protocols?.length > 0 ? <GroupAvatar avatars={protocols} /> : '-',
+      value: protocols?.length > 0 ? (
+        <div className='flex items-center gap-2'>
+          <span>{protocols.map(p => p.name).join(', ')}</span>
+        </div>
+      ) : '-',
       id: 3,
     },
   ];
