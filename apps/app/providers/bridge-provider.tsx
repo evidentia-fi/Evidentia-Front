@@ -58,23 +58,28 @@ export const BridgeProvider = ({ children }: PropsWithChildren) => {
   const approve = async ({ amount, chain }: { amount: bigint; chain: string }) => {
     const uah = stable[chain];
     if (!uah) return;
-    const commonParams = {
-      functionName: 'approve',
-      args: [uah.spender, amount] as const,
-      address: uah.address,
-      chainId: chains[chain]?.id,
-    };
+    const chainConfig = chains[chain];
+    if (!chainConfig) return;
 
-    const res =
-      chain === 'Base'
-        ? await writeContract({
-            ...commonParams,
-            abi: abi.stableBondCoinsOftAbi,
-          })
-        : await writeContract({
-            ...commonParams,
-            abi: abi.stableAddressAbi,
-          });
+    let res: Address;
+
+    if (chain === 'Base') {
+      res = await writeContract({
+        abi: abi.stableBondCoinsOftAbi,
+        functionName: 'approve',
+        args: [uah.spender, amount] as const,
+        address: uah.address,
+        chainId: chainConfig.id,
+      });
+    } else {
+      res = await writeContract({
+        abi: abi.stableAddressAbi,
+        functionName: 'approve',
+        args: [uah.spender, amount] as const,
+        address: uah.address,
+        chainId: chainConfig.id,
+      });
+    }
 
     await waitForTransactionReceipt(wagmiConfig, {
       hash: res,

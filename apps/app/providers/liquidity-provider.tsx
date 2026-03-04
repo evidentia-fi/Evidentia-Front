@@ -47,11 +47,12 @@ export const LiquidityProvider = ({ children }: PropsWithChildren) => {
     const token0Symbol = data?.pool?.token0?.symbol ?? '';
     const token1Symbol = data?.pool?.token1?.symbol ?? '';
 
-    const poolApr = calculateApr({
+    const poolAprPercent = calculateApr({
       volume24h,
       tvl,
       feeTier,
     });
+    const poolApr = Number(poolAprPercent.toFixed(6));
 
     const currentSnapshot: LiquiditySnapshot = {
       feeTier,
@@ -76,14 +77,16 @@ export const LiquidityProvider = ({ children }: PropsWithChildren) => {
     setSnapshot(currentSnapshot);
   }, [result]);
 
-  const effectiveSnapshot: LiquiditySnapshot = snapshot ?? {
-    feeTier: 0,
-    tvl: 0,
-    volume24h: 0,
-    token0Symbol: '',
-    token1Symbol: '',
-    totalApr: 0,
-  };
+  const effectiveSnapshot: LiquiditySnapshot =
+    snapshot ??
+    ({
+      feeTier: 0,
+      tvl: 0,
+      volume24h: 0,
+      token0Symbol: '',
+      token1Symbol: '',
+      totalApr: 0,
+    } as const);
 
   const exchanges = [
     {
