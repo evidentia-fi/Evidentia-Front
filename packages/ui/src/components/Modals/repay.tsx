@@ -47,7 +47,7 @@ const RepayModal = () => {
             value={amount}
             decimalScale={decimals}
             onValueChange={values => setAmount(values.value)}
-            onMaxClick={() => setAmount(totalDebt)}
+            onMaxClick={() => setAmount(balance)}
           />
           <div className={'grid-cols12 grid gap-2.5'}>
             <Button
