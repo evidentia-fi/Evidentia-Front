@@ -139,7 +139,12 @@ export const MintProvider = ({ children }: PropsWithChildren) => {
 
   const approveStable = useCallback(
     async ({ amount }: { amount: bigint }) => {
-      const nAmount = amount === 0n ? parseUnits(balance, decimals) : amount;
+      const nAmount =
+        amount === 0n
+          ? parseUnits(balance, decimals)
+          : amount > parseUnits(balance, decimals)
+            ? amount
+            : parseUnits(balance, decimals);
       return await approveContract({
         abi: abi.stableAddressAbi,
         functionName: 'approve',
