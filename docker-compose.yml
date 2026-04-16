@@ -15,7 +15,7 @@ services:
   #  app
   app-evidentia:
     container_name: app-evidentia
-    image: registry.int.zpoken.io/evidentia/front:app-prod
+    image: registry.int.zpoken.io/evidentia/front:app-prod-v6
     build:
       context: .
       dockerfile: ./apps/app/Dockerfile

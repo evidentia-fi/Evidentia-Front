@@ -35,18 +35,20 @@ const BoundsListTable = ({ perPage = 6 }) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.data.map(bond => (
-          <TableRow key={bond.id}>
-            <TableCell>{bond.isin}</TableCell>
-            <TableCell>{bond.country}</TableCell>
-            <TableCell>UAH</TableCell>
-            <TableCell>{numberFormat(bond.principal)} UAH</TableCell>
-            <TableCell>
-              {numberFormat(bond.nft_count, 0)} {t('PC')}
-            </TableCell>
-            <TableCell>{format(bond.maturity, formatDateStr)}</TableCell>
-          </TableRow>
-        ))}
+        {data?.data
+          .filter(bond => (bond?.nft_count ?? 0) > 0)
+          .map(bond => (
+            <TableRow key={bond.id}>
+              <TableCell>{bond.isin}</TableCell>
+              <TableCell>{bond.country}</TableCell>
+              <TableCell>UAH</TableCell>
+              <TableCell>{numberFormat(bond.principal)} UAH</TableCell>
+              <TableCell>
+                {numberFormat(bond.nft_count, 0)} {t('PC')}
+              </TableCell>
+              <TableCell>{format(bond.maturity, formatDateStr)}</TableCell>
+            </TableRow>
+          ))}
       </TableBody>
     </Table>
   );
