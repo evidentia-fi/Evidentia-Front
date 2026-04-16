@@ -1,29 +1,29 @@
+# Base stage for shared environment variables
+FROM node:18-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
 # Builder
-FROM node:18-alpine AS builder
+FROM base AS builder
 RUN apk add --no-cache libc6-compat
-RUN apk update
 
 WORKDIR /app
-RUN yarn global add turbo
 
 COPY . .
-RUN turbo prune --scope=app --docker
-
+RUN npx turbo prune --scope=app --docker
 
 # Installer
-FROM node:18-alpine AS installer
-RUN apk add --no-cache libc6-compat
-RUN apk add --no-cache python3 make g++
-RUN apk update
+FROM base AS installer
+RUN apk add --no-cache libc6-compat python3 make g++
 
 WORKDIR /app
-RUN yarn global add pnpm
-RUN yarn global add turbo
 
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
-RUN pnpm install
+
+RUN pnpm install --frozen-lockfile
 RUN pnpm add date-fns-tz -w
 
 COPY --from=builder /app/out/full/ .
@@ -31,18 +31,20 @@ COPY turbo.json turbo.json
 
 ARG NODE
 ENV NODE=${NODE}
-
-COPY ./apps/app/.env.${NODE}.local ./apps/app/.env.production
 ENV NODE_ENV=production
 
-RUN turbo build --filter=app...
+COPY ./apps/app/.env.${NODE}.local ./apps/app/.env.production
+
+RUN pnpm turbo build --filter=app...
 
 # Runner
 FROM node:18-alpine AS runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN apk add --no-cache curl \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
 USER nextjs
 
 COPY --from=installer /app/apps/app/next.config.mjs .
@@ -54,4 +56,5 @@ COPY --from=installer --chown=nextjs:nodejs /app/apps/app/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /app/apps/app/.next/static ./apps/app/.next/static
 COPY --from=installer --chown=nextjs:nodejs /app/apps/app/public ./apps/app/public
 
-CMD node apps/app/server.js
+ENTRYPOINT ["node"]
+CMD [ "apps/app/server.js" ]
