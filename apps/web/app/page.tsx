@@ -27,7 +27,8 @@ const tickers = [
 const tokens = [
   { title: 'Ethereum', image: 'eth' },
   { title: 'Tron', image: 'tron' },
-  { title: 'TON', image: 'ton' },
+  // { title: 'TON', image: 'ton' },
+  { title: 'Base', image: 'base' },
   { title: 'Solana', image: 'solana' },
   { title: 'Whitechain', image: 'whitechain' },
 ];
