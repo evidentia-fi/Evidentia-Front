@@ -11,7 +11,7 @@ export const menuItems = [
     title: 'Staking',
     link: 'https://ua.evidentia.fi/staking',
   },
-  {
-    title: 'Collateral Manager',
-  },
+  // {
+  //   title: 'Collateral Manager',
+  // },
 ];

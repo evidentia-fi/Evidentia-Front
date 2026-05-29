@@ -1,0 +1,8 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="24" fill="#1A1A1A"/>
+    <g transform="translate(8, 8)">
+        <path fill-rule="evenodd" clip-rule="evenodd"
+              d="M32 16C32 24.8365 24.824 32 15.9721 32C7.57386 32 0.684242 25.5522 0 17.345H21.1853V14.6551H0C0.684242 6.44789 7.57386 0 15.9721 0C24.824 0 32 7.16344 32 16Z"
+              fill="#0052FF"/>
+    </g>
+</svg>
