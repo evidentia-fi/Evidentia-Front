@@ -3,16 +3,19 @@ import { Dispatch, SetStateAction } from 'react';
 export interface IAccountContext {
   address: string | undefined;
   addressTron: string | null;
+  addressSolana: string | null;
   symbol: string | undefined;
   networkName: string | undefined;
   chainId: number;
   explorerUrl: string | undefined;
   isConnected: boolean;
   isConnectedTron: boolean;
+  isConnectedSolana: boolean;
   loading: boolean;
   connect: () => void;
   disconnect: () => void;
   disconnectTron: () => void;
+  disconnectSolana: () => void;
   addAsset: (args: { symbol: string; decimals: number }) => Promise<void>;
   addAssetToTonLink: (args: { symbol: string; decimals: number }) => Promise<void>;
 }
@@ -156,5 +159,19 @@ export interface ITronTokenStore {
   }) => Promise<void>;
   refetch: () => Promise<void>;
   set: (partial: Partial<Omit<ITronTokenStore, 'set'>>) => void;
+  reset: () => void;
+}
+
+export interface ISolanaTokenStore {
+  solBalance: string;
+  tokenBalance: string;
+  decimals: number;
+  handleBridgeToEvm: (props: {
+    toAddress: string;
+    amount: string;
+    toChain: string;
+  }) => Promise<void>;
+  refetch: () => Promise<void>;
+  set: (partial: Partial<Omit<ISolanaTokenStore, 'set'>>) => void;
   reset: () => void;
 }

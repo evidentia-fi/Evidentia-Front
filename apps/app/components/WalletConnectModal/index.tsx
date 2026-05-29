@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 
 import NetworkSelect from '@/components/WalletConnectModal/NetworkSelect';
 import WalletSelect from '@/components/WalletConnectModal/WalletSelect';
+import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '@tronweb3/tronwallet-adapter-react-hooks';
 import { useTranslation } from 'react-i18next';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
@@ -17,7 +18,7 @@ import { ethNetwork } from '@workspace/utils/config';
 
 const WalletConnectModal = () => {
   const { t } = useTranslation();
-  const [type, setType] = useState<'evm' | 'tron' | null>(null);
+  const [type, setType] = useState<'evm' | 'tron' | 'sol' | null>(null);
   const closeModal = useModalState(s => s.closeModal);
 
   const {
@@ -30,6 +31,18 @@ const WalletConnectModal = () => {
     connecting: connectingTron,
     wallet,
   } = useWallet();
+
+  const {
+    wallets: solanaWallets,
+    select: selectSolana,
+    connect: connectSolana,
+    connected: isConnectedSolana,
+    publicKey,
+    disconnect: disconnectSolana,
+    connecting: connectingSolana,
+    wallet: solanaWallet,
+  } = useSolanaWallet();
+  const addressSolana = publicKey?.toBase58() ?? null;
 
   const { address: addressEvm, isConnected, connector: connectorConnectedEvm } = useAccount();
   const { disconnect: disconnectEvm } = useDisconnect();
@@ -113,6 +126,42 @@ const WalletConnectModal = () => {
             </div>
           )}
 
+          {type === 'sol' && (
+            <div className='flex flex-col items-end gap-2'>
+              {solanaWallets.flatMap(wallet => (
+                <WalletSelect
+                  className='w-full'
+                  key={wallet?.adapter?.name}
+                  onClick={() => {
+                    selectSolana(wallet?.adapter?.name);
+                  }}
+                  wallet={wallet?.adapter?.name}
+                  urlIcon={wallet?.adapter?.icon}
+                >
+                  {wallet?.adapter?.name}
+                </WalletSelect>
+              ))}
+              {solanaWallet?.adapter?.name && (
+                <Button
+                  variant='secondary'
+                  onClick={async () => {
+                    await connectSolana();
+                    closeModal();
+                  }}
+                  className='bg-success-300 hover:bg-success-500 w-[150px]'
+                  isLoading={connectingSolana}
+                >
+                  <img
+                    src={solanaWallet?.adapter?.icon}
+                    alt={solanaWallet?.adapter?.name}
+                    className='size-4'
+                  />
+                  {t('BUTTON.CONNECT')}
+                </Button>
+              )}
+            </div>
+          )}
+
           {!type &&
             [
               {
@@ -138,6 +187,18 @@ const WalletConnectModal = () => {
                 address: addressTron,
                 disconnect: async () => {
                   await disconnectTron();
+                },
+              },
+              {
+                name: 'Solana',
+                symbol: 'sol',
+                open: () => {
+                  setType('sol');
+                },
+                isConnected: isConnectedSolana,
+                address: addressSolana,
+                disconnect: async () => {
+                  await disconnectSolana();
                 },
               },
             ].map(chain => <NetworkSelect {...chain} key={chain.name} />)}

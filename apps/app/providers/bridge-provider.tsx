@@ -3,6 +3,7 @@
 import { PropsWithChildren, useEffect } from 'react';
 
 import { useTronWeb } from '@/providers/tron-provider';
+import { PublicKey } from '@solana/web3.js';
 import { Options } from '@layerzerolabs/lz-v2-utilities';
 import { readContract, waitForTransactionReceipt } from '@wagmi/core';
 import { Address, Chain, pad, parseUnits } from 'viem';
@@ -15,7 +16,7 @@ import { useBridge } from '@workspace/ui/stores/use-bridge';
 import { EStatus, Emodal, useModalState } from '@workspace/ui/stores/use-modal-state';
 
 import { abi } from '@workspace/utils/abis';
-import { env, isTestnet, wagmiConfig } from '@workspace/utils/config';
+import { SOLANA_EID, env, isTestnet, wagmiConfig } from '@workspace/utils/config';
 
 export const chains: Record<string, Chain & { eid: number }> = isTestnet
   ? {
@@ -107,31 +108,36 @@ export const BridgeProvider = ({ children }: PropsWithChildren) => {
     fromChain: string;
     toChain: string;
   }) => {
-    const minAmountLD = (amount * 75n) / 100n; // 25% slippage
+    let toBytes32Address: Address;
+    let dstChainConfig: { eid: number };
 
-    let toBytes32Address;
-    let dstChainConfig;
-
-    if (toChain === 'Tron') {
+    if (toChain === 'Solana') {
+      const bytes = new PublicKey(toAddress).toBytes();
+      toBytes32Address = ('0x' +
+        Array.from(bytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')) as Address;
+      dstChainConfig = { eid: SOLANA_EID };
+    } else if (toChain === 'Tron') {
       const tronHexAddress = ('0x' + tronWeb.address.toHex(toAddress).substring(2)) as Address;
       toBytes32Address = pad(tronHexAddress, { size: 32 });
-
-      dstChainConfig = {
-        eid: isTestnet ? 40420 : 30420,
-      };
+      dstChainConfig = { eid: isTestnet ? 40420 : 30420 };
     } else {
       toBytes32Address = pad(toAddress as Address, { size: 32 });
-      dstChainConfig = {
-        eid: chains[toChain]?.eid as number,
-      };
+      dstChainConfig = { eid: chains[toChain]?.eid as number };
     }
 
     const payInLzToken = false;
-
     const _gas = 71000;
-    const extraOptions = Options.newOptions()
-      .addExecutorLzReceiveOption(_gas, 0)
-      .toHex() as Address;
+
+    // Solana enforced options already set on-chain (250k CU + 2.5M lamports) — do not add here
+    const extraOptions =
+      toChain === 'Solana'
+        ? ('0x' as Address)
+        : (Options.newOptions().addExecutorLzReceiveOption(_gas, 0).toHex() as Address);
+
+    // Solana: rate 1:1, no slippage. EVM/Tron: 25% slippage tolerance
+    const minAmountLD = toChain === 'Solana' ? amount : (amount * 75n) / 100n;
 
     const sendParam = {
       dstEid: dstChainConfig.eid,
@@ -242,6 +248,10 @@ export const BridgeProvider = ({ children }: PropsWithChildren) => {
     {
       name: 'Base',
       symbol: 'base',
+    },
+    {
+      name: 'Solana',
+      symbol: 'sol',
     },
   ];
 

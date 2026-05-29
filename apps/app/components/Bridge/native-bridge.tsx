@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PublicKey } from '@solana/web3.js';
 import { NetworkIcon, TokenIcon } from '@web3icons/react';
 import { BigNumber } from 'bignumber.js';
 import { ArrowDown } from 'lucide-react';
@@ -34,7 +35,8 @@ import {
 import { useAccount } from '@workspace/ui/providers/account-provider';
 import { useStable } from '@workspace/ui/providers/stable-provider';
 import { useBridge } from '@workspace/ui/stores/use-bridge';
-import { Emodal, useModalState } from '@workspace/ui/stores/use-modal-state';
+import { EStatus, Emodal, useModalState } from '@workspace/ui/stores/use-modal-state';
+import { useSolanaToken } from '@workspace/ui/stores/use-solana';
 import { useTronToken } from '@workspace/ui/stores/use-tron';
 
 import { abi } from '@workspace/utils/abis';
@@ -73,8 +75,13 @@ export function NativeBridgeForm() {
     balanceTron: s.tokenBalance,
   }));
 
+  const { handleBridgeToEvm: handleBridgeToEvmSolana, balanceSolana } = useSolanaToken(s => ({
+    handleBridgeToEvm: s.handleBridgeToEvm,
+    balanceSolana: s.tokenBalance,
+  }));
+
   const { openModal } = useModalState(s => ({ openModal: s.openModal }));
-  const { isConnected: isConnectedEvm, isConnectedTron, address } = useAccount();
+  const { isConnected: isConnectedEvm, isConnectedTron, isConnectedSolana, address } = useAccount();
 
   const { handleBridgeFromEvm, options } = useBridge(s => ({
     handleBridgeFromEvm: s.handleBridgeFromEvm,
@@ -102,12 +109,12 @@ export function NativeBridgeForm() {
     functionName: 'balanceOf',
     args: [address as `0x${string}`],
     query: {
-      enabled: Boolean(from),
+      enabled: Boolean(stable[from]?.address && address),
     },
     chainId: chains[from]?.id,
   });
 
-  const decimals = stable[from]?.decimals;
+  const decimals = from === 'Solana' ? 6 : stable[from]?.decimals;
 
   const balance = balanceRaw && decimals ? formatUnits(balanceRaw, decimals) : '0';
 
@@ -119,9 +126,8 @@ export function NativeBridgeForm() {
     }
   }, [from, to, address]);
 
-  const isToTron = to === 'Tron';
-
-  const maxBalance = from !== 'Tron' ? balance : balanceTron;
+  const maxBalance =
+    from === 'Solana' ? balanceSolana : from === 'Tron' ? balanceTron : balance;
 
   async function onSubmit(values: TNativeBridgeSchema) {
     if (BigNumber(values.amount).gt(maxBalance)) {
@@ -132,10 +138,43 @@ export function NativeBridgeForm() {
       return;
     }
 
-    if (isToTron && !values.address.startsWith('T')) {
+    if (values.to === 'Solana') {
+      try {
+        new PublicKey(values.address);
+      } catch {
+        form.setError('address', {
+          type: 'manual',
+          message: t('FORM.NATIVE_BRIDGE.NOT_SOLANA_ADDRESS_ERROR'),
+        });
+        return;
+      }
+    } else if (values.to === 'Tron') {
+      if (!values.address.startsWith('T')) {
+        form.setError('address', {
+          type: 'manual',
+          message: t('FORM.NATIVE_BRIDGE.NOT_TRON_ADDRESS_ERROR'),
+        });
+        return;
+      }
+    } else {
+      if (!values.address.startsWith('0x')) {
+        form.setError('address', {
+          type: 'manual',
+          message: t('FORM.NATIVE_BRIDGE.NOT_EVM_ADDRESS_ERROR'),
+        });
+        return;
+      }
+    }
+
+    const isSolanaRoute = values.from === 'Solana' || values.to === 'Solana';
+    const isAllowedSolanaRoute =
+      (values.from === 'Ethereum' && values.to === 'Solana') ||
+      (values.from === 'Solana' && values.to === 'Ethereum');
+
+    if (isSolanaRoute && !isAllowedSolanaRoute) {
       form.setError('address', {
         type: 'manual',
-        message: t('FORM.NATIVE_BRIDGE.NOT_TRON_ADDRESS_ERROR'),
+        message: t('FORM.NATIVE_BRIDGE.UNSUPPORTED_ROUTE'),
       });
       return;
     }
@@ -150,14 +189,30 @@ export function NativeBridgeForm() {
       return;
     }
 
-    if (!isToTron && !values.address.startsWith('0x')) {
-      form.setError('address', {
-        type: 'manual',
-        message: t('FORM.NATIVE_BRIDGE.NOT_EVM_ADDRESS_ERROR'),
-      });
-
+    if (values.from === 'Solana') {
+      openModal(Emodal.Status, { status: EStatus.Confirm });
+      try {
+        await handleBridgeToEvmSolana({
+          toAddress: values.address,
+          amount: values.amount,
+          toChain: values.to,
+        });
+        openModal(Emodal.Status, { status: EStatus.Success });
+      } catch {
+        openModal(Emodal.Status, { status: EStatus.Failed });
+      }
       return;
     }
+
+    // Tron bridge only supports EVM destinations (Ethereum, Base)
+    if (!chains[values.to]) {
+      form.setError('address', {
+        type: 'manual',
+        message: t('FORM.NATIVE_BRIDGE.UNSUPPORTED_ROUTE'),
+      });
+      return;
+    }
+
     await handleBridgeToEvm({
       toAddress: values.address,
       amount: values.amount,
@@ -165,7 +220,8 @@ export function NativeBridgeForm() {
     });
   }
 
-  const isConnected = from === 'Tron' ? isConnectedTron : isConnectedEvm;
+  const isConnected =
+    from === 'Tron' ? isConnectedTron : from === 'Solana' ? isConnectedSolana : isConnectedEvm;
 
   return (
     <Form {...form}>
@@ -281,23 +337,21 @@ export function NativeBridgeForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectContent>
-                    {options.map(el => (
-                      <SelectItem value={el.name} key={el.symbol}>
-                        {el.symbol === 'base' ? (
-                          <NetworkIcon
-                            name='base'
-                            variant='branded'
-                            size='24'
-                            fallback={<img src='/icons/base.svg' alt='Base' className='size-6' />}
-                          />
-                        ) : (
-                          <TokenIcon symbol={el.symbol} variant='branded' size='24' />
-                        )}
-                        {el.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  {options.map(el => (
+                    <SelectItem value={el.name} key={el.symbol}>
+                      {el.symbol === 'base' ? (
+                        <NetworkIcon
+                          name='base'
+                          variant='branded'
+                          size='24'
+                          fallback={<img src='/icons/base.svg' alt='Base' className='size-6' />}
+                        />
+                      ) : (
+                        <TokenIcon symbol={el.symbol} variant='branded' size='24' />
+                      )}
+                      {el.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

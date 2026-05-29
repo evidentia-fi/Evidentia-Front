@@ -1,5 +1,6 @@
 import React, { PropsWithChildren, useMemo } from 'react';
 
+import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '@tronweb3/tronwallet-adapter-react-hooks';
 import { useAccount, useDisconnect, useWatchAsset } from 'wagmi';
 
@@ -17,6 +18,13 @@ export const AccountProvider = ({ children }: PropsWithChildren) => {
     connected: isConnectedTron,
     disconnect: disconnectTron,
   } = useWallet();
+
+  const {
+    publicKey,
+    connected: isConnectedSolana,
+    disconnect: disconnectSolana,
+  } = useSolanaWallet();
+  const addressSolana = publicKey?.toBase58() ?? null;
 
   const { openModal } = useModalState(s => ({ openModal: s.openModal }));
   const { disconnect } = useDisconnect();
@@ -49,17 +57,20 @@ export const AccountProvider = ({ children }: PropsWithChildren) => {
         () => ({
           address,
           addressTron,
+          addressSolana,
           symbol: chain?.nativeCurrency?.symbol,
           networkName: chain?.name,
           explorerUrl: chain?.blockExplorers?.default?.url,
           chainId: Number(chainId),
           isConnected,
           isConnectedTron: isConnectedTron,
+          isConnectedSolana,
           loading: false,
           disconnect: async () => {
             disconnect();
           },
           disconnectTron,
+          disconnectSolana,
           connect: () => openModal(Emodal.WalletConnect),
           addAsset: async ({ symbol, decimals }) => {
             if (!symbol || !decimals) return;
@@ -80,10 +91,13 @@ export const AccountProvider = ({ children }: PropsWithChildren) => {
           isConnected,
           disconnect,
           disconnectTron,
+          disconnectSolana,
           openModal,
           chain,
           addressTron,
           isConnectedTron,
+          addressSolana,
+          isConnectedSolana,
         ],
       )}
     >

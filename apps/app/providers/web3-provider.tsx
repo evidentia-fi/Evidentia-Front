@@ -3,6 +3,7 @@
 import React, { PropsWithChildren, useMemo } from 'react';
 
 import { useTronWeb } from '@/providers/tron-provider';
+import { SolanaProvider } from '@/providers/solana-provider';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { WalletProvider } from '@tronweb3/tronwallet-adapter-react-hooks';
 import { TronLinkAdapter, WalletConnectAdapter } from '@tronweb3/tronwallet-adapters';
@@ -38,7 +39,7 @@ const Web3Provider = ({ children }: PropsWithChildren) => {
           autoConnect={false}
           onConnect={address => tronWeb.setAddress(address)}
         >
-          {children}
+          <SolanaProvider>{children}</SolanaProvider>
         </WalletProvider>
       </QueryClientProvider>
     </WagmiProvider>
