@@ -144,6 +144,8 @@
   "FORM.NATIVE_BRIDGE.AMOUNT_TITLE": "Введіть суму {{symbol}}",
   "FORM.NATIVE_BRIDGE.NOT_TRON_ADDRESS_ERROR": "Будь ласка, введіть дійсну адресу TRON",
   "FORM.NATIVE_BRIDGE.NOT_EVM_ADDRESS_ERROR": "Будь ласка, введіть дійсну адресу EVM",
+  "FORM.NATIVE_BRIDGE.NOT_SOLANA_ADDRESS_ERROR": "Будь ласка, введіть дійсну адресу Solana",
+  "FORM.NATIVE_BRIDGE.UNSUPPORTED_ROUTE": "Цей маршрут мосту не підтримується",
   "FORM.ALLOWANCE_MANAGEMENT.ISSUER_ADDRESS": "Адреса емітента",
   "FORM.ALLOWANCE_MANAGEMENT.QUANTITY_TO_MINT": "Кількість для карбування",
   "FORM.CREATE_BOND.PRINCIPAL_TITLE": "Основна сума",

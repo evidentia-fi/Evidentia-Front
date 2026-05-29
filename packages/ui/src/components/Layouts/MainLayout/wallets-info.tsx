@@ -9,6 +9,7 @@ import WalletInfo from '@workspace/ui/components/Layouts/MainLayout/wallet';
 import { Button } from '@workspace/ui/components/button';
 import { useAccount } from '@workspace/ui/providers/account-provider';
 import { useStake } from '@workspace/ui/providers/stake-provider';
+import { useSolanaToken } from '@workspace/ui/stores/use-solana';
 import { useTronToken } from '@workspace/ui/stores/use-tron';
 
 import { numberFormat } from '@workspace/utils/constants';
@@ -22,16 +23,19 @@ const WalletsInfo = ({ variant }: WalletsInfoProps) => {
   const {
     address,
     addressTron,
+    addressSolana,
     isConnected,
     connect,
     networkName,
     symbol: networkSymbol,
     isConnectedTron,
+    isConnectedSolana,
     addAsset,
     addAssetToTonLink,
   } = useAccount();
 
   const { tronTokenBalance } = useTronToken(s => ({ tronTokenBalance: s.tokenBalance }));
+  const { solanaTokenBalance } = useSolanaToken(s => ({ solanaTokenBalance: s.tokenBalance }));
   const { stakedAmount, balance, symbol, decimals } = useStake();
 
   const content = (
@@ -71,7 +75,24 @@ const WalletsInfo = ({ variant }: WalletsInfoProps) => {
           ]}
         />
       )}
-      {!isConnected && !isConnectedTron && (
+      {isConnectedSolana && (
+        <WalletInfo
+          address={addressSolana!}
+          networkName='Solana'
+          networkSymbol='SOL'
+          symbol='UAHe'
+          decimals={6}
+          addAsset={() => {}}
+          balances={[
+            {
+              label: t('WALLET_INFO.BALANCE'),
+              value: `${numberFormat(solanaTokenBalance)} UAHe`,
+              id: 1,
+            },
+          ]}
+        />
+      )}
+      {!isConnected && !isConnectedTron && !isConnectedSolana && (
         <div
           className={
             variant === 'mobile'

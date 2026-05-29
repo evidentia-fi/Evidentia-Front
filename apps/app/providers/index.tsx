@@ -11,6 +11,7 @@ import { MintProvider } from '@/providers/mint-provider';
 import { StableProvider } from '@/providers/stable-provider';
 import { StakeProvider } from '@/providers/stake-provider';
 import { TronWebProvider } from '@/providers/tron-provider';
+import { SolanaTokenProvider } from '@/providers/solana-token-provider';
 import { TronTokenProvider } from '@/providers/tron-token-provider';
 import Web3Provider from '@/providers/web3-provider';
 import { Provider } from 'urql';
@@ -35,6 +36,7 @@ const AllProviders = Compose(
   AccountProvider,
   ContractServiceProvider,
   TronTokenProvider,
+  SolanaTokenProvider,
   StableProvider,
   StakeProvider,
   MintProvider,
