@@ -1,5 +1,5 @@
 # Builder
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat
 RUN apk update
 
@@ -11,7 +11,7 @@ RUN turbo prune --scope=app-sol --docker
 
 
 # Installer
-FROM node:18-alpine AS installer
+FROM node:20-alpine AS installer
 RUN apk add --no-cache libc6-compat
 RUN apk add --no-cache python3 make g++
 RUN apk update
@@ -37,7 +37,7 @@ ENV NODE_ENV=production
 RUN turbo build --filter=app-sol...
 
 # Runner
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs

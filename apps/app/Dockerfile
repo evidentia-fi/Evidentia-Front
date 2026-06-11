@@ -1,5 +1,5 @@
 # Base stage for shared environment variables
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -38,7 +38,7 @@ COPY ./apps/app/.env.${NODE}.local ./apps/app/.env.production
 RUN pnpm turbo build --filter=app...
 
 # Runner
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 RUN apk add --no-cache curl \
