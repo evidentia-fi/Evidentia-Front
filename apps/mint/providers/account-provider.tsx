@@ -21,17 +21,20 @@ export const AccountProvider = ({ children }: PropsWithChildren) => {
         () => ({
           address,
           addressTron: '',
+          addressSolana: '',
           symbol: chain?.nativeCurrency?.symbol,
           networkName: chain?.name,
           explorerUrl: chain?.blockExplorers?.default?.url,
           chainId: Number(chainId),
           isConnected,
           isConnectedTron: false,
+          isConnectedSolana: false,
           loading: false,
           disconnect: async () => {
             disconnect();
           },
           disconnectTron: () => {},
+          disconnectSolana: () => {},
           connect: () => openModal(Emodal.WalletConnect),
           addAsset: async ({ symbol, decimals }) => {
             if (!symbol || !decimals) return;
