@@ -18,11 +18,11 @@
     "@workspace/typescript-config": "workspace:*",
     "dotenv-cli": "^8.0.0",
     "prettier": "^3.5.1",
-    "prettier-plugin-tailwindcss": "^0.6.11",
-    "turbo": "^2.4.2",
+    "prettier-plugin-tailwindcss": "~0.7.0",
+    "turbo": "~2.8.0",
     "typescript": "5.7.3"
   },
-  "packageManager": "pnpm@10.4.1",
+  "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=20"
   },
@@ -34,7 +34,8 @@
       "@reown/appkit": "1.7.7",
       "@reown/appkit-adapter-wagmi": "1.7.7",
       "@wagmi/connectors@5>@walletconnect/ethereum-provider": "2.21.1",
-      "@solana/web3.js": "1.98.2"
+      "@solana/web3.js": "1.98.2",
+      "axios": "^1.17.0"
     }
   }
 }
