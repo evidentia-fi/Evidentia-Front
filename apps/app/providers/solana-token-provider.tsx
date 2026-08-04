@@ -13,6 +13,7 @@ import {
   publicKey as umiPublicKey,
   transactionBuilder,
 } from '@metaplex-foundation/umi';
+import { base58 } from '@metaplex-foundation/umi/serializers';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { type Address, formatUnits, hexToBytes, pad, parseUnits } from 'viem';
@@ -22,6 +23,11 @@ import { chains } from '@/providers/bridge-provider';
 import { useSolanaToken } from '@workspace/ui/stores/use-solana';
 
 import { env } from '@workspace/utils/config';
+
+// Bounds for the HTTP confirmation poll that replaces the WebSocket-based
+// `sendAndConfirm`. Solana blockhashes expire after ~60-90s.
+const CONFIRMATION_TIMEOUT_MS = 90_000;
+const CONFIRMATION_POLL_INTERVAL_MS = 2_000;
 
 // Convert a web3.js TransactionInstruction to a UMI WrappedInstruction.
 // Avoids adding umi-web3js-adapters as a direct dependency.
@@ -58,12 +64,6 @@ export const SolanaTokenProvider = ({ children }: PropsWithChildren) => {
 
   const refetch = useCallback(async () => {
     if (!connected || !publicKey) {
-      return;
-    }
-
-    if (!env.SOLANA_RPC_URL) {
-      console.error('[SolanaTokenProvider] NEXT_PUBLIC_SOLANA_RPC_URL is not set. Cannot fetch Solana balances.');
-      setSolanaTokenState({ solBalance: '0', tokenBalance: '0' });
       return;
     }
 
@@ -114,7 +114,6 @@ export const SolanaTokenProvider = ({ children }: PropsWithChildren) => {
       toChain: string;
     }) => {
       if (!publicKey || !connected) throw new Error('Solana wallet not connected');
-      if (!env.SOLANA_RPC_URL) throw new Error('Solana RPC URL not configured');
       if (!env.SOLANA_MINT) throw new Error('Solana MINT not configured');
       if (!env.SOLANA_ESCROW) throw new Error('Solana ESCROW not configured');
       if (!env.SOLANA_OFT_PROGRAM_ID) throw new Error('Solana OFT program not configured');
@@ -146,7 +145,8 @@ export const SolanaTokenProvider = ({ children }: PropsWithChildren) => {
 
       // UMI instance with connected wallet as identity + payer
       const walletAdapter = { publicKey, signTransaction, signAllTransactions, signMessage };
-      const umi = createUmi(env.SOLANA_RPC_URL).use(walletAdapterIdentity(walletAdapter));
+      // Same same-origin proxy endpoint the ConnectionProvider resolved — single producer.
+      const umi = createUmi(connection.rpcEndpoint).use(walletAdapterIdentity(walletAdapter));
 
       // lz-solana-sdk-v2 internally calls toWeb3Connection(rpc) which requires
       // rpc instanceof Connection OR rpc.connection instanceof Connection.
@@ -226,14 +226,46 @@ export const SolanaTokenProvider = ({ children }: PropsWithChildren) => {
         addresses: alt.state.addresses.map(addr => umiPublicKey(addr.toBase58())),
       };
 
-      // Build v0 versioned transaction and send
-      await transactionBuilder()
+      // Build v0 versioned transaction and send exactly once.
+      // `sendAndConfirm` is not used: it confirms via a `signatureSubscribe` WebSocket,
+      // and the same-origin RPC proxy only serves HTTP. Confirmation is polled below.
+      const signatureBytes = await transactionBuilder()
         .add(cuLimitIx)
         .add(cuPriceIx)
         .add(sendIx)
         .useV0()
         .setAddressLookupTables([umiAlt])
-        .sendAndConfirm(umi);
+        .send(umi);
+
+      // UMI returns the signature as raw bytes; web3.js expects base58.
+      const signature = base58.deserialize(signatureBytes)[0];
+      const deadline = Date.now() + CONFIRMATION_TIMEOUT_MS;
+
+      // Read-only polling — the transaction is never re-sent.
+      for (;;) {
+        const { value } = await connection.getSignatureStatuses([signature], {
+          searchTransactionHistory: true,
+        });
+        const status = value[0];
+
+        if (status?.err) {
+          throw new Error(`Solana transaction failed: ${JSON.stringify(status.err)}`);
+        }
+
+        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') {
+          break;
+        }
+
+        if (Date.now() >= deadline) {
+          throw new Error(
+            `Solana transaction ${signature} was not confirmed within ${
+              CONFIRMATION_TIMEOUT_MS / 1000
+            }s`,
+          );
+        }
+
+        await new Promise(resolve => setTimeout(resolve, CONFIRMATION_POLL_INTERVAL_MS));
+      }
 
       await refetch();
     };

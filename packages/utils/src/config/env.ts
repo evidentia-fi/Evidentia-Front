@@ -10,7 +10,6 @@ export const env = {
   STABLES_STAKING_ADDRESS: (process.env.NEXT_PUBLIC_STABLES_STAKING_ADDRESS ?? '0x') as Address,
   OFT_ADAPTER: (process.env.NEXT_PUBLIC_OFT_ADAPTER ?? '0x') as Address,
   TRON_ADDRESS: process.env.NEXT_PUBLIC_TRON_ADDRESS ?? '',
-  SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? '',
   SOLANA_OFT_PROGRAM_ID: process.env.NEXT_PUBLIC_SOLANA_OFT_PROGRAM_ID ?? '',
   SOLANA_OFT_STORE: process.env.NEXT_PUBLIC_SOLANA_OFT_STORE ?? '',
   SOLANA_MINT: process.env.NEXT_PUBLIC_SOLANA_MINT ?? '',
