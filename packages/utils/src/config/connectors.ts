@@ -40,9 +40,9 @@ const config = createConfig({
     storage: cookieStorage,
   }),
   transports: {
-    // [mainnet.id]: http('https://rpc.ethereum.zpoken.dev'),
-    [mainnet.id]: http('https://eth-mainnet.g.alchemy.com/v2/s7CeyKmVLqakDSUUQh0Bl'),
-    [base.id]: http('https://base-mainnet.g.alchemy.com/v2/s7CeyKmVLqakDSUUQh0Bl'),
+    // Same-origin proxy routes: the provider URL and its API key stay server-side.
+    [mainnet.id]: http('/api/rpc/ethereum'),
+    [base.id]: http('/api/rpc/base'),
   },
   multiInjectedProviderDiscovery: false,
   ssr: true,
