@@ -209,6 +209,7 @@
   "ERRORS.INVALID_TYPE_ERROR": "Invalid type",
   "ERRORS.MAX_BALANCE_ERROR": "Insufficient balance",
   "ERRORS.INVALID_ISIN": "Invalid ISIN",
+  "ERRORS.WALLET_CONNECT_FAILED": "Wallet connection failed: {{message}}",
   "##############INFO#################": "##################INFO################",
   "INFO.WALLETCONNECT.DICONNECTED": "WalletConnect is already disconnected from {{network}} network",
   "##############LABEL#################": "##################LABEL################",

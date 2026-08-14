@@ -2,10 +2,16 @@ import { injected, walletConnect } from '@wagmi/connectors';
 import { Config, CreateConnectorFn, cookieStorage, createConfig, createStorage, http } from 'wagmi';
 import { Chain, base, mainnet, sepolia } from 'wagmi/chains';
 
+// Resolved against `window.location` in the browser, empty during SSR. WalletConnect only
+// ever runs client-side, so the fallbacks below are never used by a real pairing.
+const appOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+
 export const metadata = {
   name: 'Evidentia',
   description: 'Evidentia: Bridging TradFi and DeFi Through Bond Tokenization',
-  url: 'https://evidentia.fi/',
+  // Wallets compare `metadata.url` against the real browser origin (Verify API). A
+  // hardcoded apex URL makes every deployment on a subdomain look like a domain mismatch.
+  url: appOrigin || 'https://evidentia.fi',
   icons: ['https://ua.evidentia.fi/logo.svg'],
 };
 
@@ -33,7 +39,14 @@ const injectedConnector = injected({
   shimDisconnect: false,
 });
 
-const connectors: CreateConnectorFn[] = [injectedConnector, walletConnectConnector];
+// `createConfig()` calls `connector.setup()` synchronously, and WalletConnect's setup boots
+// its Core, which opens IndexedDB — unavailable in the Next server runtime. A connector is
+// useless while prerendering anyway: nothing can pair with a wallet there, `WalletConnectModal`
+// (the only reader of `connectors`) is never rendered on the server, and wagmi performs its
+// reconnect from a browser-only effect (`Hydrate` gates `onMount()` behind `useEffect` when
+// `ssr: true`). Everything else about the config stays identical in both runtimes.
+const connectors: CreateConnectorFn[] =
+  typeof window === 'undefined' ? [injectedConnector] : [injectedConnector, walletConnectConnector];
 
 const config = createConfig({
   storage: createStorage({
@@ -41,8 +54,12 @@ const config = createConfig({
   }),
   transports: {
     // Same-origin proxy routes: the provider URL and its API key stay server-side.
-    [mainnet.id]: http('/api/rpc/ethereum'),
-    [base.id]: http('/api/rpc/base'),
+    // The WalletConnect connector reuses these transports to build the session `rpcMap`
+    // (`@wagmi/connectors` -> `extractRpcUrls`), and `@walletconnect/jsonrpc-http-connection`
+    // throws on anything that is not an absolute http(s) URL. A bare `/api/rpc/...` therefore
+    // breaks the connection right after the wallet approves it, so the origin is prefixed here.
+    [mainnet.id]: http(`${appOrigin}/api/rpc/ethereum`),
+    [base.id]: http(`${appOrigin}/api/rpc/base`),
   },
   multiInjectedProviderDiscovery: false,
   ssr: true,

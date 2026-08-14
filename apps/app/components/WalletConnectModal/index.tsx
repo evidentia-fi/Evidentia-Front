@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import NetworkSelect from '@/components/WalletConnectModal/NetworkSelect';
 import WalletSelect from '@/components/WalletConnectModal/WalletSelect';
@@ -47,6 +47,29 @@ const WalletConnectModal = () => {
   const { address: addressEvm, isConnected, connector: connectorConnectedEvm } = useAccount();
   const { disconnect: disconnectEvm } = useDisconnect();
   const { connectors, connectAsync } = useConnect();
+
+  // Picking a Tron wallet only calls `select()`; `WalletProvider` then auto-connects on its
+  // own and opens the QR, which leaves the Connect button below disabled for the whole
+  // pairing — so the `closeModal()` in its handler never runs. Close on the
+  // disconnected -> connected transition instead: it happens only once the adapter reports a
+  // real session, never on reject or error, and the ref seed keeps the modal open when it is
+  // opened while Tron is already connected.
+  const wasConnectedTron = useRef(isConnectedTron);
+  useEffect(() => {
+    if (isConnectedTron && !wasConnectedTron.current) closeModal();
+    wasConnectedTron.current = isConnectedTron;
+  }, [isConnectedTron, closeModal]);
+
+  // A rejected / expired / aborted pairing must leave the modal usable so the next click
+  // can request a fresh QR code, instead of escaping as an unhandled rejection.
+  const notifyConnectError = (error: unknown) => {
+    toast.error(
+      t('ERRORS.WALLET_CONNECT_FAILED', {
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  };
+
   return (
     <Dialog open={true} onOpenChange={closeModal}>
       <DialogContent className='w-full sm:max-w-[325px]'>
@@ -60,7 +83,12 @@ const WalletConnectModal = () => {
                 <WalletSelect
                   key={connector.id}
                   onClick={async () => {
-                    await connectAsync({ connector, chainId: ethNetwork.id });
+                    try {
+                      await connectAsync({ connector, chainId: ethNetwork.id });
+                    } catch (error) {
+                      notifyConnectError(error);
+                      return;
+                    }
                     if (
                       connector?.id === 'walletConnect' &&
                       wallet &&
@@ -101,7 +129,12 @@ const WalletConnectModal = () => {
                 <Button
                   variant='secondary'
                   onClick={async () => {
-                    await connect();
+                    try {
+                      await connect();
+                    } catch (error) {
+                      notifyConnectError(error);
+                      return;
+                    }
                     if (
                       connectorConnectedEvm &&
                       wallet?.adapter?.name === 'WalletConnect' &&
@@ -145,7 +178,12 @@ const WalletConnectModal = () => {
                 <Button
                   variant='secondary'
                   onClick={async () => {
-                    await connectSolana();
+                    try {
+                      await connectSolana();
+                    } catch (error) {
+                      notifyConnectError(error);
+                      return;
+                    }
                     closeModal();
                   }}
                   className='bg-success-300 hover:bg-success-500 w-[150px]'
