@@ -24,6 +24,10 @@ const Web3Provider = ({ children }: PropsWithChildren) => {
           relayUrl: 'wss://relay.walletconnect.com',
           projectId: env.REOWN_PROJECT_ID,
           metadata,
+          // Without a prefix this SignClient shares one global Core and one set of
+          // keychain/pairing/session keys with the Solana provider, so the two clobber
+          // each other's sessions. The EVM connector already uses the `wagmi` prefix.
+          customStoragePrefix: 'tron',
         },
       }),
     ],
@@ -35,8 +39,14 @@ const Web3Provider = ({ children }: PropsWithChildren) => {
       <QueryClientProvider client={queryClient}>
         <WalletProvider
           adapters={adapters}
-          disableAutoConnectOnLoad={true}
-          autoConnect={false}
+          // The adapter is rebuilt on every page load with an empty state and exposes no
+          // separate restore call, so `connect()` is the only rehydration path it has:
+          // `WalletConnectWallet.connect()` reuses an acknowledged session straight from
+          // storage and only falls back to pairing when there is none. `WalletProvider`
+          // makes that call on load only when auto-connect is on and not deferred, which
+          // is why the previous flags left every reload disconnected.
+          autoConnect={true}
+          disableAutoConnectOnLoad={false}
           onConnect={address => tronWeb.setAddress(address)}
         >
           <SolanaProvider>{children}</SolanaProvider>

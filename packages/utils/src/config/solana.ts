@@ -30,6 +30,9 @@ export const solanaWallets = [
     options: {
       projectId,
       metadata,
+      // Keeps this provider's Core and its session storage separate from the Tron
+      // SignClient, which would otherwise share the same unprefixed storage keys.
+      customStoragePrefix: 'solana',
     },
   }),
 ];

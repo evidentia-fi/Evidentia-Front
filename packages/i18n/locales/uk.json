@@ -209,6 +209,7 @@
   "ERRORS.INVALID_TYPE_ERROR": "Недопустимий тип",
   "ERRORS.MAX_BALANCE_ERROR": "Недостатньо коштів",
   "ERRORS.INVALID_ISIN": "Недійсний ISIN",
+  "ERRORS.WALLET_CONNECT_FAILED": "Не вдалося підключити гаманець: {{message}}",
   "##############INFO#################": "##################INFO################",
   "INFO.WALLETCONNECT.DICONNECTED": "WalletConnect вже відключено від мережі {{network}}",
   "##############LABEL#################": "##################LABEL################",
