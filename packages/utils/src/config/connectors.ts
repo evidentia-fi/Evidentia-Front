@@ -27,7 +27,11 @@ export const ethNetwork: Chain = isTestnet ? sepolia : mainnet;
 const chains: readonly [Chain, ...Chain[]] = [mainnet, base];
 
 const walletConnectConnector = walletConnect({
-  customStoragePrefix: 'wagmi',
+  // Bumped once from `wagmi`: sessions created before the transports became absolute have a
+  // relative `rpcMap` persisted with them, and `UniversalProvider` replays it on init, which
+  // throws before the new config can apply. A fresh namespace makes those records unreachable
+  // so users do not have to clear site data by hand.
+  customStoragePrefix: 'wagmi-v2',
   projectId,
   metadata,
   qrModalOptions: {
